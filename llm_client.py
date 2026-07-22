@@ -45,9 +45,9 @@ class LLMClient:
     @classmethod
     def from_environment(cls) -> "LLMClient":
         return cls(
-            api_base=os.getenv("LLM_API_BASE", "https://api.deepseek.com").strip(),
+            api_base=os.getenv("LLM_API_BASE", "").strip(),
             api_key=os.getenv("LLM_API_KEY", "").strip(),
-            model=os.getenv("LLM_MODEL", "deepseek-v4-flash").strip(),
+            model=os.getenv("LLM_MODEL", "").strip(),
             timeout_seconds=float(os.getenv("LLM_TIMEOUT_SECONDS", "90")),
         )
 
@@ -244,4 +244,3 @@ def _normalize_validation(
     normalized["conclusion"] = conclusion
     normalized["disclaimer"] = "当前结果为代码结构与逻辑辅助检查，工程应用前仍需结合目标PLC平台进行编译和测试。"
     return normalized
-

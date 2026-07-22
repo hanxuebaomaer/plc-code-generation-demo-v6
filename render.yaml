@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: plc-demo-platform-v6
+    name: plc-code-generation-demo-v6
     runtime: docker
     plan: free
     region: singapore
@@ -10,9 +10,9 @@ services:
     autoDeployTrigger: commit
     envVars:
       - key: LLM_API_BASE
-        value: https://api.deepseek.com
+        sync: false
       - key: LLM_MODEL
-        value: deepseek-v4-flash
+        sync: false
       - key: LLM_API_KEY
         sync: false
       - key: LLM_TIMEOUT_SECONDS
