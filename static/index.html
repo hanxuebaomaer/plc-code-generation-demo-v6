@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工业PLC代码生成与验证平台 Demo</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">PLC<span></span></div>
+        <div>
+          <h1>工业PLC代码生成与验证平台 Demo</h1>
+          <p>工业控制代码生成 · IEC 61131-3 Structured Text (ST) · 需求一致性校验</p>
+        </div>
+      </div>
+      <div class="status-row">
+        <div id="modelStatus" class="badge badge-warn">模型加载中...</div>
+        <div class="badge badge-red">Demo展示模式</div>
+      </div>
+    </header>
+
+    <div id="notice" class="notice">系统初始化中...</div>
+
+    <main class="main-grid">
+      <section class="card input-card red-left">
+        <div class="card-title"><span class="icon">✎</span><h2>需求输入</h2></div>
+        <textarea id="requirement" placeholder="请输入工业PLC/ST控制需求"></textarea>
+        <div class="chips">
+          <button data-template="motor">⚙ 电机控制</button>
+          <button data-template="pump">♨ 泵阀联锁</button>
+          <button data-template="conveyor">♣ 传送带计数</button>
+          <button data-template="alarm">♙ 报警保护</button>
+          <button data-template="timer">⏱ 定时控制</button>
+        </div>
+        <div class="actions">
+          <button id="generateBtn" class="primary">&lt;/&gt; 生成代码</button>
+          <button id="clearBtn" class="secondary">⌫ 清空输入</button>
+        </div>
+      </section>
+
+      <section class="card code-card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon code-icon">&lt;/&gt;</span><h2>ST代码生成结果</h2></div>
+          <div class="small-actions">
+            <button id="copyBtn">▣ 复制代码</button>
+            <button id="exportBtn">⇩ 导出.st</button>
+          </div>
+        </div>
+        <div id="chatBox" class="chat-box hidden"></div>
+        <pre id="codeBox" class="code-box"></pre>
+        <div class="code-actions"><button id="validateBtn" class="outline-red">开始代码验证</button></div>
+      </section>
+    </main>
+
+    <section class="workflow">
+      <div class="step"><span>⇲</span>需求输入</div><i></i>
+      <div class="step"><span>♧</span>模型生成</div><i></i>
+      <div class="step"><span>&lt;/&gt;</span>代码返回</div><i></i>
+      <div class="step"><span>♢</span>自动校验</div>
+    </section>
+
+    <section class="bottom-grid">
+      <section class="card check-card">
+        <div class="card-title"><span class="icon">▣</span><h2>检测项</h2></div>
+        <ul class="check-list">
+          <li><span>✓ 语法检查</span><b id="checkSyntaxStatus" class="check-result pending">待验证</b></li>
+          <li><span>✓ POU结构检查</span><b id="checkPouStatus" class="check-result pending">待验证</b></li>
+          <li><span>✓ 输入/输出变量完整性</span><b id="checkVariableStatus" class="check-result pending">待验证</b></li>
+          <li><span>✓ 命名规范检查</span><b id="checkNamingStatus" class="check-result pending">待验证</b></li>
+          <li><span>✓ 逻辑一致性检查</span><b id="checkLogicStatus" class="check-result pending">待验证</b></li>
+          <li><span>✓ IEC 61131-3 规范符合性</span><b id="checkStandardStatus" class="check-result pending">待验证</b></li>
+        </ul>
+      </section>
+
+      <section class="card summary-card">
+        <div class="card-title"><span class="icon">◷</span><h2>验证结果总览</h2></div>
+        <div class="status-grid">
+          <div class="status pending"><span class="status-icon">·</span><label>语法检查</label><b id="syntaxStatus">待验证</b></div>
+          <div class="status pending"><span class="status-icon">·</span><label>POU结构检查</label><b id="pouStatus">待验证</b></div>
+          <div class="status pending"><span class="status-icon">·</span><label>输入/输出变量完整性</label><b id="varStatus">待验证</b></div>
+          <div class="status pending"><span class="status-icon">·</span><label>命名规范检查</label><b id="namingStatus">待验证</b></div>
+          <div class="status pending"><span class="status-icon">·</span><label>逻辑一致性检查</label><b id="logicStatus">待验证</b></div>
+          <div class="status pending"><span class="status-icon">·</span><label>IEC 61131-3规范符合性</label><b id="standardStatus">待验证</b></div>
+        </div>
+      </section>
+
+      <section class="card suggest-card red-left-small">
+        <div class="card-title suggestion-title"><span class="icon">?</span><h2>问题定位与优化建议</h2><b id="riskBadge" class="risk-badge pending">待验证</b></div>
+        <ol id="suggestions"><li>等待代码验证结果。</li></ol>
+        <div class="conclusion">
+          <h3>验证结论</h3>
+          <div id="conclusionText" class="conclusion-bar">待验证</div>
+        </div>
+      </section>
+    </section>
+
+    <footer>适用于工业PLC控制代码生成、Demo演示与模型验证</footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
