@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY main.py llm_client.py validator_fallback.py ./
+COPY static ./static
 
 RUN chown -R appuser:appgroup /app
 USER appuser

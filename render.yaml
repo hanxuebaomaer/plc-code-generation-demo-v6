@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: plc-code-generation-demo-v6
+    name: plc-code-generation-demo-v7-public
     runtime: docker
     plan: free
     region: singapore
@@ -16,6 +16,14 @@ services:
       - key: LLM_API_KEY
         sync: false
       - key: LLM_TIMEOUT_SECONDS
-        value: "90"
+        value: "60"
+      - key: LLM_CODE_MAX_TOKENS
+        value: "3800"
+      - key: LLM_DISABLE_THINKING
+        value: "true"
+      - key: GENERATION_CACHE_TTL_SECONDS
+        value: "3600"
+      - key: GENERATION_CACHE_MAX_ENTRIES
+        value: "64"
       - key: LOG_LEVEL
         value: INFO
