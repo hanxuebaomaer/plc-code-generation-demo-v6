@@ -2,12 +2,12 @@
 .env.*
 !.env.example
 .venv/
-venv/
-.testdeps/
 __pycache__/
 *.py[cod]
-*.log
+.pytest_cache/
 .idea/
 .vscode/
+*.log
+*.zip
+test-results/
 .DS_Store
-Thumbs.db

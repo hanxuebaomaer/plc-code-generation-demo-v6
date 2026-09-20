@@ -1,29 +1,24 @@
 services:
   - type: web
-    name: plc-code-generation-demo-v7-public
+    name: industrial-code-demo-v8
     runtime: docker
     plan: free
     region: singapore
     dockerfilePath: ./Dockerfile
-    dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
       - key: LLM_API_BASE
         sync: false
-      - key: LLM_MODEL
-        sync: false
       - key: LLM_API_KEY
         sync: false
-      - key: LLM_TIMEOUT_SECONDS
-        value: "60"
+      - key: LLM_MODEL
+        sync: false
       - key: LLM_CODE_MAX_TOKENS
-        value: "3800"
+        value: "6000"
       - key: LLM_DISABLE_THINKING
         value: "true"
-      - key: GENERATION_CACHE_TTL_SECONDS
-        value: "3600"
-      - key: GENERATION_CACHE_MAX_ENTRIES
-        value: "64"
-      - key: LOG_LEVEL
-        value: INFO
+      - key: ALLOW_FALLBACK
+        value: "true"
+      - key: JOB_TIMEOUT_SECONDS
+        value: "240"
