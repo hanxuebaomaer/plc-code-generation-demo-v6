@@ -1,116 +1,90 @@
-# 工业代码工作台 Demo v8
+# 工业代码工作台 · Demo v9
 
-独立的多语言代码生成与辅助审查演示项目。基于 v7 的 FastAPI 单服务部署方式扩展，旧目录与旧服务无需修改。
+面向轨道交通控制场景的 ST / C++17 代码生成与辅助审查演示。单个 FastAPI 服务托管网页与接口，无需 Node.js。源码包不包含模型密钥。
 
-## 已部署的 v8 演示
+## v9 更新
 
-- 公网网址：[https://industrial-code-demo-v8.onrender.com/](https://industrial-code-demo-v8.onrender.com/)
-- 发布日期：2026-09-21；服务独立于旧站，运行版本为 8.0.0。
-- 部署源码位于现有仓库的独立 `demo-v8` 分支；旧站继续使用 `main` 分支。
-- 当前使用 Render Free、Ohio 区域；空闲后可能休眠，首次打开请等待唤醒。公开访问会消耗服务器模型额度。
-- 已核验页面访问、六类场景的 ST/C++ 生成与辅助审查、普通问候和文本文件导入。检查记录见 `TESTING.md`。
+- 桌面三栏工作台：左侧需求、中间代码、右侧代码验证。去掉大幅宣传区，适配 1366×768 等常见电脑尺寸；长代码、需求和审查详情在各面板内部滚动。
+- 保留六个场景、文本与文件导入、ST/C++切换、流式生成、复制、导出、重新验证、停止处理等功能。
+- 生成提示强化状态机、跨周期闭锁、互斥、数值边界和停止优先级。
+- 遇到可确定修正的缺陷，最多追加两轮代码改进及独立复核，无问题时不增加调用。仅在检查没有新增退步且问题数量减少时采用修正结果；否则保留原代码及真实结论。
+- 检测项保留六项且与结果一一对应。审查聚焦原需求，不把未做编译或可选功能当作源码缺陷。需求依据按3—5组简要说明，建议仅列需要修改或确认的事项。
+- 通过项的依据默认收起，问题优先展示；所有返回的检查依据仍可展开查看。不会为了展示把真实问题改成“通过”。
 
-## 本次升级
+“初步通过”仅指本次结构规则与模型静态辅助审查未发现问题，不保证工程正确率，不代表编译、仿真、车辆测试或安全认证通过。本 Demo 不连接真实车辆。
 
-- 全新工作台界面：轨道交通场景、需求输入、代码输出、处理流程、检测项及需求对应证据。
-- 六类可编辑示例：操作端判断、机车方向控制、撒砂控制、机车停放制动、里程计算、轮缘润滑及测试。
-- 文本输入，以及 TXT / Markdown / 代码文本 / DOCX / 文字型 PDF 导入。2 MB、20000 字符限制；PDF 不超过30页。扫描图片不做 OCR，旧 DOC 请另存。
-- ST 和 C++17 两种语言。复制、导出 `.st` 或 `.cpp`，代码生成时持续返回内容。
-- 边生成边做增量结构检查，完整代码返回后做结构检查与模型辅助需求审查。显示依据及修改建议，不显示内部推理过程。
-- 需求或语言修改立即使旧代码及旧检查失效；取消或断流不把半截代码当成完整结果。
-- 优先使用服务器配置的在线模型。只有操作端判断、里程计算的**原样内置需求**支持离线参考；修改过的需求绝不按单个关键词套用不相关模板。
+## 在线部署
 
-## 验证范围
+v9 应使用独立的 `demo-v9` 分支和新的 Web Service，不覆盖原 v8 服务。公网地址以新服务面板实际分配的网址为准。
 
-本系统是离线演示工具，不连接真实车辆。界面“初步通过”仅表示规则或模型审查在相应项中未发现问题，**不等同于编译、动态仿真、生成准确率测定、实车测试或安全认证**。运行环境、硬件接口、厂商 ST 扩展和实际安全要求仍需工程人员确认。
+### Render
 
-C++ 以独立控制类及 update 周期接口为目标，不默认提供 main，不运行用户代码。生成的 ST 和 C++ 均需在目标工具链中另行编译与测试。
+1. 将本目录文件上传至专用于 v9 的仓库或分支，确保 Dockerfile 在根目录。
+2. 在 Render 新建 Web Service，选择 v9 分支、Docker、服务名称 `industrial-code-demo-v9`（如重名则调整）。
+3. 实例按需求选择 Free；本项目不会自动购买付费套餐。区域可选择 Ohio，按账户当前可选项为准。
+4. 在服务环境变量配置 `LLM_API_BASE`、`LLM_API_KEY`、`LLM_MODEL`。地址使用模型的兼容 Chat Completions 地址，通常以 `/v1` 结尾。密钥只保存在服务器，不提交到Git。
+5. 建议设置 `JOB_TIMEOUT_SECONDS=360`、`LLM_CODE_MAX_TOKENS=6000`、`LLM_DISABLE_THINKING=true`。健康检查 `/health`，由平台设置 PORT。
+6. 部署成为 Live 后，打开服务面板显示的 HTTPS 网址，再测试生成和验证。
 
-## 本地运行（Windows，Python 3.12 64位）
+也可使用 `render.yaml` 创建 Blueprint，配置相同环境变量。Free 可能因闲置而休眠，首次访问要等待唤醒；正式演示如需持续运行，由账户所有者按平台现行价格自行选择付费实例。公网生成会消耗模型账户额度，请关注使用量。
 
-1. 将本目录完整解压。
-2. 将 `.env.example` 复制为 `.env`，填写三个服务器模型配置。真实密钥不得进入仓库、压缩包或浏览器代码。
-3. 双击 `run_demo_windows.bat`。脚本固定检查 Python 3.12 64位、创建独立环境、安装依赖并在服务就绪后打开浏览器。
-4. 本地网址默认 `http://127.0.0.1:8000/`，本机地址不能发给其他电脑作为公网网址。
+### Railway / 自有云服务器
 
-也可手动运行：
+Railway：创建独立项目，连接 v9 分支，使用 Dockerfile；配置三个模型环境变量和 `/health` 健康检查，在 Networking 生成公网域名。费用及试用资格以平台控制台为准。
+
+云服务器：复制 `.env.example` 为 `.env`，配置模型后运行 `docker compose up -d --build`。使用域名与 HTTPS 反向代理指向8000端口。对流式接口关闭代理缓冲（如 Nginx `proxy_buffering off`），读取超时大于360秒。不要暴露环境文件、在URL中放密钥或关闭证书校验。生产用途应增加身份认证与更严格的入口限流。
+
+## 本地 Windows
+
+安装 Python 3.12 64位及 Python Launcher。双击 `run_demo_windows.bat` 会验证版本并创建 `.venv`、安装依赖，随后打开 `http://127.0.0.1:8000`。
+
+首次运行会从 `.env.example` 创建本地 `.env`，需要填写服务器模型配置。没有配置时仅提供严格匹配的有限离线参考示例，不会用无关模板代替输入需求。已有不匹配的虚拟环境不会被自动删除。
+
+如果手动运行：
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-## 服务器配置
-
-| 变量 | 含义 |
-| --- | --- |
-| LLM_API_BASE | 兼容 Chat Completions 的地址前缀；必要时含 `/v1` |
-| LLM_API_KEY | 服务器密钥，仅在托管平台环境变量内填写 |
-| LLM_MODEL | 该服务支持的模型名 |
-| LLM_CODE_MAX_TOKENS | 代码输出上限，默认6000，可设2000–12000；不是固定代码行数 |
-| LLM_TIMEOUT_SECONDS | 上游单次读取等待上限，默认90秒 |
-| LLM_DISABLE_THINKING | 默认true，兼容服务不接受扩展参数时自动去除重试 |
-| ALLOW_FALLBACK | 默认true，只对完全匹配的内置参考需求启用 |
-| MAX_CONCURRENT_JOBS | 单进程同时生成/审查数量，默认4 |
-| JOB_TIMEOUT_SECONDS | 单任务总时限，默认240秒 |
-| REQUESTS_PER_MINUTE | 单来源请求上限，默认30；代理环境建议在入口另设限流 |
-| ALLOWED_ORIGINS | 同源部署默认留空，无需开放跨域 |
-| PORT | 托管平台提供的端口，默认8000 |
-
-配置检查只表明参数齐全，不证明上游模型此刻在线。公开健康接口不返回模型名称、地址或密钥。
-
-## Render 新建独立公网服务
-
-不要覆盖旧服务，也不要向旧服务正在自动部署的分支直接推送。
-
-1. 将本目录内的源文件提交到**新仓库或独立 v8 分支**，确认根目录有 Dockerfile、requirements.txt、main.py、static/。
-2. Render 新建 Web Service，连接该仓库/分支，Runtime选择Docker；也可从本目录的 `render.yaml` 创建 Blueprint。
-3. 服务名使用中性 Demo 名称，例如 `industrial-code-demo-v8`，若占用则添加短后缀。模板默认Ohio和Free，创建时以账户可选项为准。
-4. 在新服务 Environment 填写 LLM_API_BASE、LLM_API_KEY、LLM_MODEL。不要将环境文件上传到GitHub。
-5. Health Check Path 为 `/health`。Dockerfile 已包含启动命令：
+容器启动命令为：
 
 ```sh
 python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-6. 部署为 Live 后，打开该服务面板显示的 HTTPS `onrender.com` 地址。本文开头列出了本次已发布并核验的地址；如果自行创建另一项服务，应以新服务面板实际分配的网址为准。
-7. 检查 `/health` 返回 version `8.0.0`；测试 ST、C++、文件导入和完整审查。确认旧网址仍是原版本。
+## 使用
 
-免费服务可能休眠，首次访问需要等待唤醒，亦受额度/资源约束。正式演示可由账户所有人选择合适的付费实例，费用及配额以平台当前控制台为准；本项目不自动购买或升级实例。
+1. 选择操作端判断、机车方向控制、撒砂控制、机车停放制动、里程计算、轮缘润滑及测试中的场景，或编辑自己的需求。
+2. 也可导入 TXT、DOCX、文字型PDF及代码文本，最大2MB、提取文字不超过20000字符。扫描PDF不做OCR，文件只在内存解析，不保存原文件。
+3. 选择 ST 或 C++17，点击“生成并验证”。中间同步展示代码，右侧展示处理过程、六项检查和最终结论。
+4. 生成遇到可修正项时自动改进并复核，最多两轮。审查结果始终绑定最终代码；中途变更需求或语言会使旧结果失效。
+5. 完整代码可复制或导出 `.st` / `.cpp`。点击“重新验证”只审查当前代码，不修改代码。
+6. 需求对应与修改建议默认简要呈现，点击标题可展开；问题项不会被隐藏为通过。
 
-参考官方部署说明：https://render.com/docs/web-services
+## 接口及约束
 
-## Railway / 云服务器 Docker
+|接口|功能|
+|---|---|
+|GET /health|版本、配置就绪状态，不返回密钥及供应商信息|
+|GET /api/scenarios|六类示例需求|
+|POST /api/import-file|提取文件文字|
+|POST /api/generate-stream|流式生成、同步检查、必要时改进、最终审查|
+|POST /api/validate-stream|仅流式审查当前代码|
+|POST /api/generate-code|兼容非流式生成接口|
+|POST /api/validate-code|兼容非流式审查接口|
 
-Railway：新建项目并连接独立 v8 仓库或分支，使用根目录 Dockerfile；配置三个模型环境变量，将健康检查设为 `/health`，在 Networking 中生成公共域名。使用平台分配的 PORT，不要复用旧服务资源。收费与试用资格以当前控制台为准。
+请求参数使用 `requirement`、`language`（`st`/`cpp`），验证增加 `code`。SSE包含stage/delta/code/checks/notice/chat/error/done；有自动改进时可收到第二个code事件，以最后一个完整code及匹配code_id的报告为准。
 
-云服务器：配置 `.env` 后运行 `docker compose up -d --build`。将反向代理指向8000端口，配置域名及HTTPS证书，对流式接口关闭代理缓冲（Nginx `proxy_buffering off`），读取超时应大于240秒。对公网入口设置适当限流，避免滥用消耗模型额度。不要关闭证书校验或将密钥放进URL。
+生成缓存按完整需求及语言隔离，最多32项、有效1小时。模型断流、审查失败、超时会保留准确状态，不伪造通过。默认同源，无需CORS通配符。模型及导入内容一律作为数据处理，不执行生成代码。
 
-## 接口
-
-| 接口 | 用途 |
-| --- | --- |
-| GET /health | 存活检查，版本及配置就绪标志 |
-| GET /api/scenarios | 六类中性场景需求 |
-| POST /api/import-file | multipart file，返回提取文本及导入提示 |
-| POST /api/generate-stream | requirement + language(st/cpp)，SSE 代码/检查/阶段事件 |
-| POST /api/validate-stream | requirement + language + code，SSE 审查事件 |
-| POST /api/generate-code | 非流式兼容接口，完整代码及报告 |
-| POST /api/validate-code | 非流式统一六项报告 |
-
-SSE 事件：stage、delta、code、checks、notice、chat、error、done。delta 是暂存代码片段；只有 code 事件代表完整代码。检查的六个固定 id 在前后端一一对应。验证结果绑定代码摘要，旧任务不能覆盖新需求的结果。
-
-代码缓存仅复用相同语言和相同完整需求，保留1小时，最多32项；变更参数、大小写或语言不会错用旧结果。上传文档仅在内存中提取，原文件不保存；生成结果缓存是进程内内存，不是持久化数据库。
-
-## 测试与维护
+## 测试及设计参考
 
 ```sh
 python -m unittest discover -s tests -v
 ```
 
-测试包括语言隔离、ST成对结构、C++结构、流式顺序、断流保护、模型失败行为、六项对应、上传边界和中断处理。测试不以模型自评替代真实编译或安全测试。
+验证记录见 `TESTING.md`。包括接口、上传、异常路径、真实模型流程和界面尺寸检查。实际代码仍需目标编译器及仿真环境复核。
 
-源码不依赖外部前端 CDN，静态资源由同一个 FastAPI 服务托管。视觉参考成熟组件式工作台布局，使用独立编写的 HTML/CSS/SVG，无第三方品牌图形。
-
-本项目保留 V7 的单服务架构、兼容调用接口和模型配置方式，新增分层结构检查、文件解析和可追踪的流式流水线。旧项目保持不变。
+界面参考 [Ant Design Layout](https://ant.design/components/layout/) 的工作区分层及 [shadcn/ui Sidebar](https://ui.shadcn.com/docs/components/sidebar) 的紧凑组件组织，自行编写HTML/CSS/SVG，未引入外部CDN、商标资源或框架运行时。保持原项目轻量单服务部署。

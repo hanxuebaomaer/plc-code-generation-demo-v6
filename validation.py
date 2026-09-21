@@ -112,8 +112,8 @@ def summarize(checks, source, suggestions=None, coverage=None):
     return {
         "checks": checks, "source": source,
         "risk_count": failures + warnings,
-        "conclusion": "检查进行中" if pending else ("存在问题，请修改后复核" if failures else "存在待复核项" if warnings else "初步审查完成，仍需编译与仿真验证"),
-        "suggestions": (suggestions or [])[:12], "coverage": (coverage or [])[:16],
+        "conclusion": "检查进行中" if pending else ("存在需修改项" if failures else "存在待复核项" if warnings else "6 项初步通过 · 辅助审查完成"),
+        "suggestions": list(dict.fromkeys(suggestions or [])), "coverage": coverage or [],
         "scope_note": "本结果为结构规则与模型辅助审查，不是编译、仿真、实车测试或安全认证。",
     }
 
@@ -129,6 +129,7 @@ def merge_review(local, remote):
         if model.get("status") in {"pass", "warn", "fail"} and isinstance(model.get("detail"), str):
             if item["status"] != "fail":
                 check.update(status=model["status"], detail=model["detail"][:1000], method="规则 + 模型审查")
+        check["repairable"] = check["status"] in {"warn", "fail"} and (item["status"] == "fail" or model.get("repairable") is True)
         checks.append(check)
     suggestions = remote.get("suggestions", [])
     suggestions = [s[:1000] for s in suggestions if isinstance(s, str)] if isinstance(suggestions, list) else []
@@ -144,3 +145,20 @@ def merge_review(local, remote):
     if not entries:
         suggestions.insert(0, "详细审查暂未完成，请稍后重新验证。")
     return summarize(checks, "review" if entries else "rules", suggestions, coverage)
+
+
+def repair_needed(report):
+    return report.get("source") == "review" and any(c["status"] == "fail" or c.get("repairable") and c["status"] == "warn" for c in report["checks"])
+
+
+def improved_report(before, after):
+    """A repair is accepted only after review, with fewer issues and no new check regression."""
+    if after.get("source") != "review":
+        return False
+    rank = {"pass": 0, "warn": 1, "fail": 2, "pending": 3}
+    previous = {c["id"]: c["status"] for c in before["checks"]}
+    if any(rank[c["status"]] > rank[previous.get(c["id"], "pending")] for c in after["checks"]):
+        return False
+    def score(report):
+        return (sum(c["status"] == "fail" for c in report["checks"]), sum(c["status"] == "warn" for c in report["checks"]))
+    return score(after) < score(before)

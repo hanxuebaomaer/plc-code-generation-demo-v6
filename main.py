@@ -1,4 +1,4 @@
-"""Single-service v8 workbench: stream generation, incremental checks, final review."""
+"""Single-service v9 workbench: generation, bounded improvement and honest review."""
 import asyncio
 import hashlib
 import json
@@ -23,7 +23,7 @@ from fallback import fallback_code
 from file_import import MAX_BYTES, extract_document
 from llm_client import LLMClient, ModelUnavailable, generation_messages, extract_code
 from scenarios import public_scenarios
-from validation import local_report, merge_review, structural_issues
+from validation import local_report, merge_review, structural_issues, repair_needed, improved_report
 
 BASE = Path(__file__).resolve().parent
 load_dotenv(BASE / ".env", override=False)
@@ -32,7 +32,7 @@ logger = logging.getLogger("demo")
 cache = OrderedDict()
 gate = asyncio.Semaphore(int(os.getenv("MAX_CONCURRENT_JOBS", "4")))
 rate_log = defaultdict(deque)
-MAX_SECONDS = int(os.getenv("JOB_TIMEOUT_SECONDS", "240"))
+MAX_SECONDS = int(os.getenv("JOB_TIMEOUT_SECONDS", "360"))
 
 
 @asynccontextmanager
@@ -41,7 +41,7 @@ async def lifespan(app):
     await llm.close()
 
 
-app = FastAPI(title="工业代码工作台 Demo", version="8.0.0", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="工业代码工作台 Demo", version="9.0.0", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
 
 class BodyLimit:
@@ -133,7 +133,7 @@ def is_greeting(text):
     return bool(re.fullmatch(r"\s*(你好|您好|嗨|hello|hi|你是谁|你能做什么|谢谢)[!！?？。\s]*", text, re.I))
 
 
-async def review_events(requirement, code, language):
+async def review_events(requirement, code, language, allow_improve=False):
     local = local_report(code, language)
     yield event("checks", report=local, code_id=content_id(code))
     yield event("stage", stage="structure", status="done", message="完整代码结构检查完成")
@@ -146,6 +146,28 @@ async def review_events(requirement, code, language):
         logger.warning("review unavailable: %s", type(exc).__name__)
         local["suggestions"].append("详细需求审查暂未完成，可点击“重新验证”；现有结果仅来自基础规则检查。")
         report = local
+    quality = {"attempted": False, "accepted": False, "attempts": 0}
+    for attempt in range(2):
+        if not allow_improve or not repair_needed(report):
+            break
+        quality["attempted"] = True
+        quality["attempts"] = attempt + 1
+        yield event("stage", stage="review", status="active", message=f"发现可修正项，正在进行第 {attempt + 1} 轮改进与复核")
+        try:
+            async with asyncio.timeout(150):
+                candidate = await llm.improve(requirement, code, language, report)
+                if len(candidate) > 80000 or structural_issues(candidate, language):
+                    raise ModelUnavailable("invalid_improvement")
+                candidate_report = merge_review(local_report(candidate, language), await llm.review(requirement, candidate, language))
+            if improved_report(report, candidate_report):
+                code, report = candidate, candidate_report
+                quality["accepted"] = True
+                yield event("code", code=code, language=language, source="model", code_id=content_id(code))
+                yield event("stage", stage="generation", status="done", message="已修正发现的问题并完成复核")
+            # Otherwise keep the previous complete version and its real findings.
+        except Exception as exc:
+            logger.warning("improvement unavailable: %s", type(exc).__name__)
+    report["quality_improvement"] = quality
     yield event("checks", report=report, code_id=content_id(code))
     yield event("stage", stage="review", status="done" if report["source"] == "review" else "warn", message="需求对应审查完成" if report["source"] == "review" else "已保留基础检查结果，详细审查待补充")
     yield event("done", report=report, code_id=content_id(code))
@@ -199,7 +221,9 @@ async def generation_events(body):
             yield event("notice", message="当前展示与所选示例严格对应的离线参考代码，可稍后重新生成。")
     yield event("code", code=code, language=body.language, source=source, code_id=content_id(code))
     yield event("stage", stage="generation", status="done", message=f"完整代码已返回，共 {len(code.splitlines())} 行")
-    async for value in review_events(body.requirement, code, body.language):
+    async for value in review_events(body.requirement, code, body.language, allow_improve=source != "reference"):
+        if value["type"] == "code":
+            cache[key] = (time.monotonic(), value["code"])
         yield value
 
 
@@ -236,7 +260,7 @@ def stream_response(iterator, request):
 @app.get("/health")
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "8.0.0", "service": "industrial-code-demo-v8", "generation_ready": llm.configured, "languages": ["st", "cpp"]}
+    return {"status": "ok", "version": "9.0.0", "service": "industrial-code-demo-v9", "generation_ready": llm.configured, "languages": ["st", "cpp"]}
 
 
 @app.get("/api/scenarios")

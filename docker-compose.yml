@@ -1,5 +1,5 @@
 services:
-  demo-v8:
+  demo-v9:
     build: .
     ports:
       - "${PORT:-8000}:8000"

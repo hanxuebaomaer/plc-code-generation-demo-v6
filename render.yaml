@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: industrial-code-demo-v8
+    name: industrial-code-demo-v9
     runtime: docker
     plan: free
     region: ohio
@@ -21,4 +21,4 @@ services:
       - key: ALLOW_FALLBACK
         value: "true"
       - key: JOB_TIMEOUT_SECONDS
-        value: "240"
+        value: "360"

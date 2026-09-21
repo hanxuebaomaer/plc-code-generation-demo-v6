@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
-echo Industrial Code Workspace Demo v8
+echo Industrial Code Workspace Demo v9
 echo.
 py -3.12 -c "import struct; assert struct.calcsize('P') == 8" >nul 2>nul
 if errorlevel 1 (
