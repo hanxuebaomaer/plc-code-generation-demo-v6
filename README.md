@@ -2,6 +2,14 @@
 
 独立的多语言代码生成与辅助审查演示项目。基于 v7 的 FastAPI 单服务部署方式扩展，旧目录与旧服务无需修改。
 
+## 已部署的 v8 演示
+
+- 公网网址：[https://industrial-code-demo-v8.onrender.com/](https://industrial-code-demo-v8.onrender.com/)
+- 发布日期：2026-09-21；服务独立于旧站，运行版本为 8.0.0。
+- 部署源码位于现有仓库的独立 `demo-v8` 分支；旧站继续使用 `main` 分支。
+- 当前使用 Render Free、Ohio 区域；空闲后可能休眠，首次打开请等待唤醒。公开访问会消耗服务器模型额度。
+- 已核验页面访问、六类场景的 ST/C++ 生成与辅助审查、普通问候和文本文件导入。检查记录见 `TESTING.md`。
+
 ## 本次升级
 
 - 全新工作台界面：轨道交通场景、需求输入、代码输出、处理流程、检测项及需求对应证据。
@@ -58,7 +66,7 @@ py -3.12 -m venv .venv
 
 1. 将本目录内的源文件提交到**新仓库或独立 v8 分支**，确认根目录有 Dockerfile、requirements.txt、main.py、static/。
 2. Render 新建 Web Service，连接该仓库/分支，Runtime选择Docker；也可从本目录的 `render.yaml` 创建 Blueprint。
-3. 服务名使用中性 Demo 名称，例如 `industrial-code-demo-v8`，若占用则添加短后缀。模板默认Singapore和Free，创建时以账户可选项为准。
+3. 服务名使用中性 Demo 名称，例如 `industrial-code-demo-v8`，若占用则添加短后缀。模板默认Ohio和Free，创建时以账户可选项为准。
 4. 在新服务 Environment 填写 LLM_API_BASE、LLM_API_KEY、LLM_MODEL。不要将环境文件上传到GitHub。
 5. Health Check Path 为 `/health`。Dockerfile 已包含启动命令：
 
@@ -66,7 +74,7 @@ py -3.12 -m venv .venv
 python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-6. 部署为 Live 后，打开该服务面板显示的 HTTPS `onrender.com` 地址。这才是可发给他人测试的新网址；服务名只是示例，不代表已经占有对应域名。
+6. 部署为 Live 后，打开该服务面板显示的 HTTPS `onrender.com` 地址。本文开头列出了本次已发布并核验的地址；如果自行创建另一项服务，应以新服务面板实际分配的网址为准。
 7. 检查 `/health` 返回 version `8.0.0`；测试 ST、C++、文件导入和完整审查。确认旧网址仍是原版本。
 
 免费服务可能休眠，首次访问需要等待唤醒，亦受额度/资源约束。正式演示可由账户所有人选择合适的付费实例，费用及配额以平台当前控制台为准；本项目不自动购买或升级实例。

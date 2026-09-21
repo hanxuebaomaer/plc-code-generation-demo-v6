@@ -3,7 +3,7 @@ services:
     name: industrial-code-demo-v8
     runtime: docker
     plan: free
-    region: singapore
+    region: ohio
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     autoDeployTrigger: commit
