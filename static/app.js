@@ -11,20 +11,30 @@ function toast(message) { $("toast").textContent = message; $("toast").hidden = 
 function notice(message) { $("notice").textContent = message; $("notice").hidden = !message; }
 function resetStages() { stages = Object.fromEntries(stageDefs.map(([id, title, message]) => [id, { title, message, status: "pending" }])); renderStages(); }
 function renderStages() {
-  $("timeline").innerHTML = stageDefs.map(([id], i) => { const s = stages[id]; return `<li class="${s.status}"><span class="step-symbol">${s.status === "done" ? "✓" : s.status === "warn" ? "!" : String(i + 1).padStart(2, "0")}</span><div><strong>${esc(s.title)}</strong><small>${esc(s.message)}</small></div></li>`; }).join("");
+  $("timeline").innerHTML = stageDefs.map(([id], i) => { const s = stages[id]; return `<li class="${s.status}" title="${esc(s.message)}"><span class="step-symbol">${s.status === "done" ? "✓" : s.status === "warn" ? "!" : String(i + 1).padStart(2, "0")}</span><div><strong>${esc(s.title)}</strong><small>${esc(s.message)}</small></div></li>`; }).join("");
 }
 function emptyReport() { renderReport({ checks: checkDefs.map(([id, label]) => ({ id, label, status: "pending", detail: "等待本次代码检查" })), conclusion: "等待生成或验证代码", coverage: [], suggestions: [] }); }
 function renderReport(report) {
   const byId = Object.fromEntries((report.checks || []).map(c => [c.id, c]));
   const checks = checkDefs.map(([id, label]) => ({ id, label, status: "pending", detail: "等待检查", ...byId[id] }));
-  $("checks").innerHTML = checks.map(c => `<div class="check-row ${Object.hasOwn(labels, c.status) ? c.status : "pending"}"><span class="check-icon">${({ pass: "✓", warn: "!", fail: "×", pending: "·" })[c.status] || "·"}</span><strong>${esc(c.label)}</strong><span class="detail" title="${esc(c.method || "")}">${esc(c.detail)}</span><span class="result">${labels[c.status] || "待检查"}</span></div>`).join("");
-  $("checkCount").textContent = `${checks.filter(c => c.status !== "pending").length} / 6 已完成`;
+  $("checks").innerHTML = checks.map(c => `<div class="check-row ${Object.hasOwn(labels, c.status) ? c.status : "pending"}"><span class="check-icon">${({ pass: "✓", warn: "!", fail: "×", pending: "·" })[c.status] || "·"}</span><strong>${esc(c.label)}</strong><span class="detail" title="${esc(c.detail)} · ${esc(c.method || "辅助审查")}">${esc(c.detail)}</span><span class="result">${labels[c.status] || "待检查"}</span></div>`).join("");
+  $("checkCount").textContent = `${checks.filter(c => c.status !== "pending").length} / 6`;
   const overall = checks.some(c => c.status === "fail") ? "fail" : checks.some(c => c.status === "pending") ? "pending" : checks.some(c => c.status === "warn") ? "warn" : "pass";
   $("conclusion").className = "conclusion " + overall;
   $("conclusion").textContent = report.conclusion || "等待审查";
-  const coverage = report.coverage || [], suggestions = report.suggestions || [];
-  let html = coverage.length ? `<table class="coverage-table"><thead><tr><th>关键需求</th><th>代码对应 / 检查依据</th><th>结果</th></tr></thead><tbody>${coverage.map(x => `<tr><td>${esc(x.requirement)}</td><td>${esc(x.evidence)}</td><td><span class="badge ${Object.hasOwn(labels, x.status) ? x.status : "warn"}">${labels[x.status] || "待复核"}</span></td></tr>`).join("")}</tbody></table>` : '<p class="muted">完整需求审查完成后，在此列出需求与代码的对应依据。</p>';
+  const priority = { fail: 0, warn: 1, pass: 2 };
+  const coverage = [...(report.coverage || [])].sort((a,b) => (priority[a.status] ?? 1) - (priority[b.status] ?? 1));
+  const suggestions = report.suggestions || [];
+  const item = x => `<div class="coverage-item"><header><span>${esc(x.requirement)}</span><span class="badge ${Object.hasOwn(labels, x.status) ? x.status : "warn"}">${labels[x.status] || "待复核"}</span></header><p>${esc(x.evidence)}</p></div>`;
+  // Keep every concern accessible; only passing evidence is folded by default.
+  const primaryCount = Math.max(3, coverage.filter(x => x.status !== "pass").length);
+  let html = coverage.length ? coverage.slice(0, primaryCount).map(item).join("") : '<p class="muted">等待完整代码审查。</p>';
+  if (coverage.length > primaryCount) html += `<details class="more-details"><summary>其余 ${coverage.length - primaryCount} 项依据</summary>${coverage.slice(primaryCount).map(item).join("")}</details>`;
   if (suggestions.length) html += `<div class="suggestions"><h4>修改与复核建议</h4><ul>${suggestions.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
+  else if (coverage.length) html += '<p class="muted">暂无需修改项。</p>';
+  $("reviewSummary").textContent = coverage.length ? `${coverage.length} 项对应${suggestions.length ? " · " + suggestions.length + " 条建议" : ""}` : "待审查";
+  if (overall === "fail" || overall === "warn" && report.source === "review") $("reviewDisclosure").open = true;
+  if (overall === "pending" && !coverage.length) $("reviewDisclosure").open = false;
   $("reviewDetails").innerHTML = html;
 }
 function highlight(code) {
@@ -123,7 +133,7 @@ async function run(validateOnly = false) {
   if (!validateOnly) { state.code = ""; state.complete = false; state.codeId = ""; renderCode(); }
   else { stages.input.status = stages.generation.status = "done"; stages.generation.message = "使用当前完整代码"; renderStages(); }
   setBusy(true);
-  const timeout = setTimeout(() => controller.abort(), 270000);
+  const timeout = setTimeout(() => controller.abort(), 390000);
   const payload = { requirement, language: state.language, ...(validateOnly ? { code: state.code } : {}) };
   try {
     await readEvents(validateOnly ? "/api/validate-stream" : "/api/generate-stream", payload, e => {
