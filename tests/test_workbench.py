@@ -13,7 +13,7 @@ from fallback import CAB_ST, CAB_CPP, MILEAGE_ST, MILEAGE_CPP, fallback_code
 from file_import import extract_document
 from llm_client import LLMClient, generation_messages
 from scenarios import SCENARIOS
-from validation import CHECKS, local_report, structural_issues, merge_review
+from validation import CHECKS, local_report, structural_issues, merge_review, repair_needed, improved_report
 
 
 class FakeModel:
@@ -63,7 +63,7 @@ class ApiTests(unittest.TestCase):
 
     def test_health_no_credentials(self):
         data = self.client.get("/health").json()
-        self.assertEqual(data["version"], "8.0.0")
+        self.assertEqual(data["version"], "9.0.0")
         self.assertFalse(any(key in data for key in ["api_key", "model", "api_base"]))
 
     def test_frontend_served_same_origin(self):
@@ -128,6 +128,69 @@ class ApiTests(unittest.TestCase):
         data = self.client.post("/api/validate-code", json={"requirement": "操作端", "code": CAB_ST, "language": "st"}).json()
         self.assertEqual([c["id"] for c in data["checks"]], [k for k, _ in CHECKS])
 
+    def setup_improvement(self, mode="better"):
+        fake = self.fake
+        fake.improve_calls = 0
+        async def review(requirement, code, language):
+            fake.review_calls += 1
+            checks = [{"id": key, "status": "pass", "detail": "有对应实现", "repairable": False} for key, _ in CHECKS]
+            if fake.review_calls == 1:
+                checks[2].update(status="warn", detail="声明需修正", repairable=mode != "ambiguous")
+            if mode == "regression" and fake.review_calls > 1:
+                checks[0].update(status="fail", detail="新的语法问题")
+            return {"checks": checks, "coverage": [{"requirement": "操作端", "evidence": "状态判断", "status": "pass"}], "suggestions": []}
+        async def improve(requirement, code, language, report):
+            fake.improve_calls += 1
+            if mode == "unavailable":
+                raise RuntimeError("test_only")
+            if mode == "invalid":
+                return "FUNCTION_BLOCK Incomplete"
+            return code + "\n(* reviewed candidate *)"
+        fake.review = review
+        fake.improve = improve
+
+    def test_improvement_is_reviewed_before_acceptance_and_cached(self):
+        self.setup_improvement()
+        data = events(self.client.post("/api/generate-stream", json={"requirement": "操作端", "language": "st"}))
+        codes = [e for e in data if e["type"] == "code"]
+        self.assertEqual(len(codes), 2)
+        self.assertNotEqual(codes[0]["code_id"], codes[1]["code_id"])
+        self.assertEqual(data[-1]["code_id"], codes[1]["code_id"])
+        self.assertTrue(data[-1]["report"]["quality_improvement"]["accepted"])
+        self.assertEqual(main.cache[main.cache_key("操作端", "st")][1], codes[-1]["code"])
+        self.assertEqual(self.fake.improve_calls, 1)
+        self.assertEqual(self.fake.review_calls, 2)
+
+    def test_failed_or_regressing_repair_keeps_original_findings(self):
+        for mode in ("unavailable", "invalid", "regression"):
+            with self.subTest(mode=mode):
+                main.cache.clear(); self.fake.review_calls = 0
+                self.setup_improvement(mode)
+                data = events(self.client.post("/api/generate-stream", json={"requirement": "操作端", "language": "st"}))
+                self.assertEqual(sum(e["type"] == "code" for e in data), 1)
+                self.assertFalse(data[-1]["report"]["quality_improvement"]["accepted"])
+                self.assertEqual(data[-1]["report"]["checks"][2]["status"], "warn")
+
+    def test_ambiguous_requirement_not_silently_rewritten(self):
+        self.setup_improvement("ambiguous")
+        result = self.client.post("/api/generate-code", json={"requirement": "操作端"}).json()
+        self.assertEqual(self.fake.improve_calls, 0)
+        self.assertEqual(result["report"]["checks"][2]["status"], "warn")
+
+    def test_validate_only_never_changes_code(self):
+        self.setup_improvement()
+        result = events(self.client.post("/api/validate-stream", json={"requirement": "操作端", "language": "st", "code": CAB_ST}))
+        self.assertEqual(self.fake.improve_calls, 0)
+        self.assertFalse(any(e["type"] == "code" for e in result))
+
+    def test_compact_v9_frontend(self):
+        html = self.client.get("/").text
+        self.assertIn("代码验证", html)
+        self.assertIn("workspace.css?v=9", html)
+        self.assertNotIn("看得见的验证过程", html)
+        self.assertNotIn("让控制需求，成为可审查的代码", html)
+        self.assertIn('id="reviewDisclosure"', html)
+
     def test_bad_inputs(self):
         for body in [{"requirement": " "}, {"requirement": "x", "language": "python"}, {"requirement": "x" * 20001}]:
             self.assertEqual(self.client.post("/api/generate-code", json=body).status_code, 422)
@@ -177,6 +240,20 @@ class ApiTests(unittest.TestCase):
 
 
 class RulesTests(unittest.TestCase):
+    def test_missing_review_never_becomes_all_pass(self):
+        report = merge_review(local_report(CAB_ST, "st"), {})
+        self.assertEqual(report["source"], "rules")
+        self.assertGreater(report["risk_count"], 0)
+
+    def test_local_failure_retained_despite_short_presentation(self):
+        report = merge_review(local_report(CAB_ST.replace("END_FUNCTION_BLOCK", ""), "st"), {"checks": [{"id": k, "status": "pass", "detail": "有依据", "repairable": False} for k, _ in CHECKS]})
+        self.assertTrue(repair_needed(report))
+        self.assertEqual(report["checks"][0]["status"], "fail")
+
+    def test_missing_coverage_is_not_a_pass(self):
+        report = merge_review(local_report(CAB_ST, "st"), {"checks": [{"id": k, "status": "pass", "detail": "有依据"} for k, _ in CHECKS]})
+        self.assertEqual(report["checks"][4]["status"], "warn")
+
     def test_references_complete(self):
         for lang, code in [("st", CAB_ST), ("st", MILEAGE_ST), ("cpp", CAB_CPP), ("cpp", MILEAGE_CPP)]:
             self.assertEqual(structural_issues(code, lang), [])
